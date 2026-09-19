@@ -149,44 +149,7 @@ public class KspTools
 
         // 4. Build Launch Vehicle
         options.ToolCollection.Add(McpServerTool.Create(
-            (string vesselName, string? payloadType, bool? includeParachute, bool? includeHeatShield,
-             string? upperEngineName, string? upperTankName, int? upperTankCount,
-             string? boosterEngineName, string? boosterTankName, int? boosterTankCount, bool? includeFins) =>
-            {
-                var config = new LaunchVehicleConfig
-                {
-                    VesselName = string.IsNullOrWhiteSpace(vesselName) ? "Ai_Rocket" : vesselName,
-                    PayloadType = payloadType ?? "Crewed",
-                    IncludeParachute = includeParachute ?? true,
-                    IncludeHeatShield = includeHeatShield ?? true,
-                    UpperEngineName = upperEngineName ?? "liquidEngine3_v2",
-                    UpperTankName = upperTankName ?? "fuelTank_long",
-                    UpperTankCount = upperTankCount ?? 1,
-                    BoosterEngineName = boosterEngineName ?? "liquidEngine_v2",
-                    BoosterTankName = boosterTankName ?? "fuelTank_long",
-                    BoosterTankCount = boosterTankCount ?? 2,
-                    IncludeFins = includeFins ?? true
-                };
-
-                var vessel = _builder.BuildLaunchVehicle(config);
-                var validation = CraftValidator.ValidateVessel(vessel);
-
-                var outPath = Path.Combine(_config.ShipsVabPath, $"{vessel.Name}.craft");
-                CraftWriter.SaveCraft(vessel, outPath);
-
-                return (object)new
-                {
-                    Success = true,
-                    SavedTo = outPath,
-                    VesselName = vessel.Name,
-                    PartCount = vessel.Parts.Count,
-                    TotalMass = validation.TotalMass,
-                    IsValid = validation.IsValid,
-                    ValidationWarnings = validation.Warnings,
-                    ValidationErrors = validation.Errors,
-                    PartsList = vessel.Parts.Select(p => new { p.FullId, Pos = $"{p.Position.X:F2},{p.Position.Y:F2},{p.Position.Z:F2}", Stage = p.IgnitionStage })
-                };
-            },
+            BuildLaunchVehicle,
             new McpServerToolCreateOptions
             {
                 Name = "ksp_build_launch_vehicle",
@@ -325,5 +288,66 @@ public class KspTools
                 Name = "kos_get_telemetry",
                 Description = "Queries live flight telemetry (altitude, apoapsis, periapsis, orbital speed, vessel mass) from the active vessel via kOS."
             }));
+    }
+
+    public object BuildLaunchVehicle(
+        string vesselName,
+        string? payloadType = "Crewed",
+        bool? includeParachute = true,
+        bool? includeHeatShield = true,
+        string? upperEngineName = "liquidEngine3_v2",
+        string? upperTankName = "fuelTank_long",
+        int? upperTankCount = 1,
+        string? boosterEngineName = "liquidEngine_v2",
+        string? boosterTankName = "fuelTank_long",
+        int? boosterTankCount = 2,
+        bool? includeFins = true)
+    {
+        try
+        {
+            var config = new LaunchVehicleConfig
+            {
+                VesselName = string.IsNullOrWhiteSpace(vesselName) ? "Ai_Rocket" : vesselName,
+                PayloadType = payloadType ?? "Crewed",
+                IncludeParachute = includeParachute ?? true,
+                IncludeHeatShield = includeHeatShield ?? true,
+                UpperEngineName = upperEngineName ?? "liquidEngine3_v2",
+                UpperTankName = upperTankName ?? "fuelTank_long",
+                UpperTankCount = upperTankCount ?? 1,
+                BoosterEngineName = boosterEngineName ?? "liquidEngine_v2",
+                BoosterTankName = boosterTankName ?? "fuelTank_long",
+                BoosterTankCount = boosterTankCount ?? 2,
+                IncludeFins = includeFins ?? true
+            };
+
+            var vessel = _builder.BuildLaunchVehicle(config);
+            var validation = CraftValidator.ValidateVessel(vessel);
+
+            var outPath = Path.Combine(_config.ShipsVabPath, $"{vessel.Name}.craft");
+            CraftWriter.SaveCraft(vessel, outPath);
+
+            return new
+            {
+                Success = true,
+                SavedTo = outPath,
+                VesselName = vessel.Name,
+                PartCount = vessel.Parts.Count,
+                TotalMass = validation.TotalMass,
+                IsValid = validation.IsValid,
+                ValidationWarnings = validation.Warnings,
+                ValidationErrors = validation.Errors,
+                PartsList = vessel.Parts.Select(p => new { p.FullId, Pos = $"{p.Position.X:F2},{p.Position.Y:F2},{p.Position.Z:F2}", Stage = p.IgnitionStage })
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to build launch vehicle");
+            return new
+            {
+                Success = false,
+                Error = ex.Message,
+                StackTrace = ex.StackTrace
+            };
+        }
     }
 }
