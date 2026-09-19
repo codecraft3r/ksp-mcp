@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KspMcp/KspMcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KspMcp.Tests/KspMcp.Tests.csproj" />
+  </Folder>
+</Solution>
