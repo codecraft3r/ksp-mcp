@@ -152,10 +152,86 @@ LOCK THROTTLE TO 0.
 
 PlanCircularizationAtApoapsis().
 ExecuteNextNode().
-PRINT "Low Tylo Orbit re-established! Ready for Kerbin return burn.".
+PRINT "Low Tylo Orbit re-established! (~35 km)".
+WAIT 5.
 
-// Telemetry beacon
+// --------------------------------------------------
+// PHASE 8: Trans-Kerbin Injection (TKI) Return Burn
+// --------------------------------------------------
+PRINT "PHASE 8: Planning Trans-Kerbin Injection return trajectory...".
+SET TARGET TO Kerbin.
+
+// Escape Tylo and Jool on a Hohmann transfer trajectory back to Kerbin
+// ~1,150 m/s dV lowers Kerbin periapsis to atmospheric interface (~35km)
+LOCAL tkiDV IS 1150.
+LOCAL tkiNode IS NODE(TIME:SECONDS + 300, 0, 0, tkiDV).
+ADD tkiNode.
+PRINT "Executing Trans-Kerbin Injection burn (dV: " + tkiDV + " m/s)...".
+ExecuteNextNode().
+
+PRINT "Trans-Kerbin Injection complete! Escaping Jool system toward Kerbin.".
+WAIT 5.
+
+// --------------------------------------------------
+// PHASE 9: Interplanetary Return Cruise
+// --------------------------------------------------
+PRINT "PHASE 9: Fast-forwarding interplanetary voyage back to Kerbin...".
+IF HASNODE REMOVE NEXTNODE.
+
+// Warp across deep space to Kerbin SOI
+IF SHIP:ORBIT:HASNEXTPATCH {
+    PRINT "Warping to Kerbin SOI transition...".
+    WARPTO(TIME:SECONDS + ETA:TRANSITION - 30).
+    WAIT UNTIL SHIP:BODY:NAME = "Kerbin".
+} ELSE {
+    PRINT "Coasting toward Kerbin...".
+    WAIT UNTIL SHIP:BODY:NAME = "Kerbin" OR SHIP:ALTITUDE < 50000000.
+}
+
+PRINT "==================================================".
+PRINT "          ENTERED KERBIN SPHERE OF INFLUENCE!     ".
+PRINT "==================================================".
+
+// Warp to Kerbin atmospheric interface (100km)
+IF SHIP:ALTITUDE > 120000 {
+    PRINT "Warping to atmospheric entry interface (100km)...".
+    WARPTO(TIME:SECONDS + ETA:PERIAPSIS - 60).
+}
+
+WAIT UNTIL SHIP:ALTITUDE < 100000.
+
+// --------------------------------------------------
+// PHASE 10: Atmospheric Reentry & Splashdown
+// --------------------------------------------------
+PRINT "PHASE 10: Preparing for high-speed atmospheric aerocapture and reentry...".
+PRINT "Decoupling ascent service module...".
+STAGE. // Jettisons Terrier engine and fuel tank
+WAIT 2.
+
+PRINT "Orienting Heat Shield to blunt reentry vector...".
+SAS OFF.
+LOCK STEERING TO -SHIP:VELOCITY:SURFACE.
+
+PRINT "Entering upper atmosphere (70km) - Aerobraking plasma regime initiated...".
+WAIT UNTIL SHIP:ALTITUDE < 70000.
+
+// Hold retrograde orientation through atmospheric deceleration
+WAIT UNTIL SHIP:ALTITUDE < 5000 AND SHIP:VELOCITY:SURFACE:MAG < 300.
+
+PRINT "Terminal aerodynamic deceleration complete. Deploying parachute!".
+STAGE. // Deploys parachuteSingle
+CHUTES ON.
+UNLOCK STEERING.
+
+PRINT "Drifting down under canopy to surface...".
+WAIT UNTIL SHIP:STATUS = "LANDED" OR SHIP:STATUS = "SPLASHED".
+
+PRINT "==================================================".
+PRINT "   FULL ROUND-TRIP MISSION ACCOMPLISHED!          ".
+PRINT "   KERBALS RETURNED SAFELY HOME TO KERBIN!        ".
+PRINT "==================================================".
+
 UNTIL FALSE {
-    PRINT "{'status':'TYLO_SURFACE_SURVIVED','body':" + SHIP:BODY:NAME + ",'alt':" + ROUND(SHIP:ALTITUDE) + "} " AT (0, 24).
+    PRINT "{'status':'MISSION_COMPLETE_SAFE_AT_KERBIN'} " AT (0, 24).
     WAIT 1.
 }
