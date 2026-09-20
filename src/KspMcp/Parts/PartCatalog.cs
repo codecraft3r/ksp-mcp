@@ -32,11 +32,15 @@ public class PartCatalog
         if (_parts.TryGetValue(name, out var part))
             return part;
 
-        // Try fuzzy match on title or name without underscores
+        var dotName = name.Replace('_', '.');
+        var underName = name.Replace('.', '_');
+
         return _parts.Values.FirstOrDefault(p =>
             p.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+            p.Name.Equals(dotName, StringComparison.OrdinalIgnoreCase) ||
+            p.Name.Equals(underName, StringComparison.OrdinalIgnoreCase) ||
             p.Title.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-            p.Name.Replace("_", "").Equals(name.Replace("_", ""), StringComparison.OrdinalIgnoreCase));
+            p.Name.Replace("_", "").Equals(name.Replace("_", "").Replace(".", ""), StringComparison.OrdinalIgnoreCase));
     }
 
     public IEnumerable<PartInfo> GetAllParts() => _parts.Values;

@@ -9,7 +9,8 @@ public class CraftPartInstance
 {
     public PartInfo Part { get; set; }
     public string Uid { get; set; }
-    public string FullId => $"{Part.Name}_{Uid}";
+    public string CraftPartName => Part.Name.Replace('_', '.');
+    public string FullId => $"{CraftPartName}_{Uid}";
     public uint PersistentId { get; set; }
     public Vector3 Position { get; set; }
     public Quaternion Rotation { get; set; } = Quaternion.Identity;

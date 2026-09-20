@@ -67,6 +67,29 @@ public static class Program
                     Console.Error.WriteLine($"[CLI] Parts: {testVessel.Parts.Count}, Total Mass: {validation.TotalMass}t, IsValid: {validation.IsValid}");
                     return validation.IsValid ? 0 : 1;
 
+                case "--build-mun":
+                    Console.Error.WriteLine("[CLI] Building Mun Explorer I (Trans-Munar Injection capable)...");
+                    var munVessel = builder.BuildLaunchVehicle(new LaunchVehicleConfig
+                    {
+                        VesselName = "Mun_Explorer_I",
+                        PayloadType = "Crewed",
+                        IncludeParachute = true,
+                        IncludeHeatShield = true,
+                        UpperEngineName = "liquidEngine3_v2",
+                        UpperTankName = "fuelTank_long",
+                        UpperTankCount = 1,
+                        BoosterEngineName = "liquidEngine_v2",
+                        BoosterTankName = "fuelTank_long",
+                        BoosterTankCount = 2,
+                        IncludeFins = true
+                    });
+                    var munVal = CraftValidator.ValidateVessel(munVessel);
+                    var munPath = Path.Combine(config.ShipsVabPath, $"{munVessel.Name}.craft");
+                    CraftWriter.SaveCraft(munVessel, munPath);
+                    Console.Error.WriteLine($"[CLI] Mun vessel saved to: {munPath}");
+                    Console.Error.WriteLine($"[CLI] Parts: {munVessel.Parts.Count}, Total Mass: {munVal.TotalMass}t, IsValid: {munVal.IsValid}");
+                    return munVal.IsValid ? 0 : 1;
+
                 case "--deploy-libs":
                     Console.Error.WriteLine($"[CLI] Deploying kOS helper libraries to {config.ShipsScriptPath}...");
                     scriptManager.DeployHelperLibraries();

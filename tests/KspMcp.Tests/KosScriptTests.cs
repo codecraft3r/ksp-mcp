@@ -55,4 +55,17 @@ GLOBAL FUNCTION Broken {
         var mathResult = manager.ValidateKerboScript(KosScriptManager.LibMathContent);
         Assert.True(mathResult.IsValid, string.Join("; ", mathResult.Errors));
     }
+
+    [Fact]
+    public void MunMissionScript_HasValidSyntax()
+    {
+        var manager = new KosScriptManager(new KspConfig());
+        var path = @"C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\Ships\Script\mun_mission.ks";
+        if (System.IO.File.Exists(path))
+        {
+            var content = System.IO.File.ReadAllText(path);
+            var result = manager.ValidateKerboScript(content);
+            Assert.True(result.IsValid, string.Join("; ", result.Errors));
+        }
+    }
 }
