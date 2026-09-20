@@ -1,4 +1,4 @@
-// lib_node.ks - Maneuver Node Execution
+// lib_node.ks - Maneuver Node Execution with Aggressive Warp
 @LAZYGLOBAL OFF.
 
 GLOBAL FUNCTION ExecuteNextNode {
@@ -13,7 +13,7 @@ GLOBAL FUNCTION ExecuteNextNode {
 
     // Estimate burn time: t = dV * m / F
     LOCAL thrustVal IS MAXTHRUST.
-    IF thrustVal <= 0 SET thrustVal TO 60.
+    IF thrustVal <= 0 SET thrustVal TO 250.
     LOCAL burnDuration IS (dV0 * SHIP:MASS) / thrustVal.
 
     PRINT "Node dV: " + ROUND(dV0, 1) + " m/s. Est Burn Time: " + ROUND(burnDuration, 1) + "s.".
@@ -23,24 +23,33 @@ GLOBAL FUNCTION ExecuteNextNode {
     PRINT "Aligning to maneuver vector...".
     WAIT 5.
 
-    // Warp to node minus half burn time
+    // Aggressive Warp to node minus half burn time
     LOCAL burnStart IS nd:TIME - (burnDuration / 2).
-    IF burnStart > TIME:SECONDS + 15 {
+    IF burnStart > TIME:SECONDS + 25 {
+        SET KUNIVERSE:TIMEWARP:MODE TO "RAILS".
         WARPTO(burnStart - 10).
     }
 
     WAIT UNTIL TIME:SECONDS >= burnStart.
+    SET KUNIVERSE:TIMEWARP:WARP TO 0.
+    WAIT UNTIL KUNIVERSE:TIMEWARP:RATE = 1.
 
     PRINT "Executing burn!".
-    WHEN STAGE:NUMBER > 2 AND MAXTHRUST = 0 THEN {
-        STAGE.
-        PRESERVE.
-    }
 
     UNTIL VDOT(v0, nd:DELTAV) <= 0.5 OR nd:DELTAV:MAG < 0.2 {
+        // Stage monitor during burn
+        IF THROTTLE > 0 AND MAXTHRUST > 0 AND STAGE:LIQUIDFUEL < 1 {
+            IF STAGE:NUMBER > 4 { // Only drop stages 7/6 or 5/4, never touch lander ascent stage
+                PRINT "Stage burnout during burn. Staging!".
+                STAGE.
+                WAIT 0.8.
+                STAGE.
+            }
+        }
+
         LOCAL throttleVal IS 1.0.
-        IF nd:DELTAV:MAG < 10 {
-            SET throttleVal TO MAX(0.05, nd:DELTAV:MAG / 10).
+        IF nd:DELTAV:MAG < 15 {
+            SET throttleVal TO MAX(0.05, nd:DELTAV:MAG / 15).
         }
         LOCK THROTTLE TO throttleVal.
         WAIT 0.05.

@@ -13,17 +13,22 @@ GLOBAL FUNCTION LaunchToOrbit {
     LOCK STEERING TO HEADING(targetHeading, 90).
 
     PRINT "T-0: Ignition and Lift-off!".
-    STAGE.
+    STAGE. // Ignites Mammoth Booster (Stage 8)
 
-    // Auto-staging trigger
-    WHEN STAGE:NUMBER > 2 AND MAXTHRUST = 0 THEN {
-        PRINT "Stage flameout detected. Staging!".
-        STAGE.
-        PRESERVE.
-    }
+    LOCAL stagedBooster IS FALSE.
 
     // Ascent gravity turn loop
     UNTIL SHIP:APOAPSIS >= targetApoapsis {
+        // If Mammoth burns out during ascent, drop it and ignite Rhino
+        IF NOT stagedBooster AND THROTTLE > 0 AND MAXTHRUST > 0 AND STAGE:LIQUIDFUEL < 1 {
+            PRINT "Mammoth booster burnout. Jettisoning booster!".
+            STAGE. // Decouple Mammoth (Stage 7)
+            WAIT 0.8.
+            STAGE. // Ignite Rhino (Stage 6)
+            SET stagedBooster TO TRUE.
+            PRINT "Rhino interplanetary cruiser engine ignited!".
+        }
+
         IF SHIP:ALTITUDE > turnStartAlt {
             LOCAL frac IS (SHIP:ALTITUDE - turnStartAlt) / (turnEndAlt - turnStartAlt).
             IF frac > 1.0 SET frac TO 1.0.
@@ -40,7 +45,13 @@ GLOBAL FUNCTION LaunchToOrbit {
     // Coast out of atmosphere
     IF SHIP:ALTITUDE < 70000 {
         PRINT "Coasting out of atmosphere (70km)...".
+        IF SHIP:ALTITUDE > 35000 {
+            SET KUNIVERSE:TIMEWARP:MODE TO "PHYSICS".
+            SET KUNIVERSE:TIMEWARP:WARP TO 3.
+        }
         WAIT UNTIL SHIP:ALTITUDE > 70000.
+        SET KUNIVERSE:TIMEWARP:WARP TO 0.
+        WAIT UNTIL KUNIVERSE:TIMEWARP:RATE = 1.
     }
     PRINT "Outside atmosphere. Ready for circularization.".
 }
