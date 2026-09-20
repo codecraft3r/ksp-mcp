@@ -52,6 +52,14 @@ public class KosTelnetClient : IDisposable
             // Allow initial banner and prompt to arrive
             await Task.Delay(500, cancellationToken);
             var initial = await _client.ReadAsync(TimeSpan.FromSeconds(1));
+            if (initial.Contains("Choose a CPU", StringComparison.OrdinalIgnoreCase) ||
+                initial.Contains("Pick Open", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogInformation("kOS CPU selection menu detected. Selecting CPU 1...");
+                await _client.WriteLineAsync("1");
+                await Task.Delay(500, cancellationToken);
+                initial = await _client.ReadAsync(TimeSpan.FromSeconds(1));
+            }
             _logger?.LogInformation("Connected to kOS Telnet. Banner: {Banner}", StripAnsi(initial).Trim());
             return true;
         }

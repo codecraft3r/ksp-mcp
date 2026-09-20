@@ -166,8 +166,8 @@ public class KosScriptManager
 
 GLOBAL FUNCTION CircularOrbitSpeed {
     PARAMETER altMeters.
-    LOCAL r IS BODY:RADIUS + altMeters.
-    RETURN SQRT(BODY:MU / r).
+    LOCAL radiusVal IS BODY:RADIUS + altMeters.
+    RETURN SQRT(BODY:MU / radiusVal).
 }
 
 GLOBAL FUNCTION Clamp {
@@ -196,7 +196,7 @@ GLOBAL FUNCTION LaunchToOrbit {
     STAGE.
 
     // Auto-staging trigger
-    WHEN MAXTHRUST = 0 THEN {
+    WHEN STAGE:NUMBER > 2 AND MAXTHRUST = 0 THEN {
         PRINT ""Stage flameout detected. Staging!"".
         STAGE.
         PRESERVE.
@@ -253,11 +253,12 @@ GLOBAL FUNCTION ExecuteNextNode {
 
     LOCAL nd IS NEXTNODE.
     LOCAL dV0 IS nd:DELTAV:MAG.
+    LOCAL v0 IS nd:DELTAV.
 
     // Estimate burn time: t = dV * m / F
-    LOCAL f IS MAXTHRUST.
-    IF f <= 0 SET f TO 60.
-    LOCAL burnDuration IS (dV0 * SHIP:MASS) / f.
+    LOCAL thrustVal IS MAXTHRUST.
+    IF thrustVal <= 0 SET thrustVal TO 60.
+    LOCAL burnDuration IS (dV0 * SHIP:MASS) / thrustVal.
 
     PRINT ""Node dV: "" + ROUND(dV0, 1) + "" m/s. Est Burn Time: "" + ROUND(burnDuration, 1) + ""s."".
 
@@ -275,13 +276,12 @@ GLOBAL FUNCTION ExecuteNextNode {
     WAIT UNTIL TIME:SECONDS >= burnStart.
 
     PRINT ""Executing burn!"".
-    LOCAL stageWatch IS FALSE.
-    WHEN MAXTHRUST = 0 THEN {
+    WHEN STAGE:NUMBER > 2 AND MAXTHRUST = 0 THEN {
         STAGE.
         PRESERVE.
     }
 
-    UNTIL VDOT(nd:DELTAV, nd:BURNVECTOR) <= 0.5 OR nd:DELTAV:MAG < 0.2 {
+    UNTIL VDOT(v0, nd:DELTAV) <= 0.5 OR nd:DELTAV:MAG < 0.2 {
         LOCAL throttleVal IS 1.0.
         IF nd:DELTAV:MAG < 10 {
             SET throttleVal TO MAX(0.05, nd:DELTAV:MAG / 10).
