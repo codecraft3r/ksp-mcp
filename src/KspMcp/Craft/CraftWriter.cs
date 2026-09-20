@@ -79,6 +79,53 @@ public static class CraftWriter
             sb.AppendLine("\t{");
             sb.AppendLine("\t}");
 
+            // Export functional modules so KSP activates staging logic
+            if (p.Part.IsCommand)
+            {
+                sb.AppendLine("\tMODULE");
+                sb.AppendLine("\t{");
+                sb.AppendLine("\t\tname = ModuleCommand");
+                sb.AppendLine("\t\tisEnabled = True");
+                sb.AppendLine("\t\tstagingEnabled = True");
+                sb.AppendLine("\t}");
+            }
+
+            if (p.Part.IsDecoupler)
+            {
+                sb.AppendLine("\tMODULE");
+                sb.AppendLine("\t{");
+                sb.AppendLine("\t\tname = ModuleDecouple");
+                sb.AppendLine("\t\tisEnabled = True");
+                sb.AppendLine("\t\tejectionForcePercent = 100");
+                sb.AppendLine("\t\tisDecoupled = False");
+                sb.AppendLine("\t\tstagingEnabled = True");
+                sb.AppendLine("\t}");
+            }
+
+            if (p.Part.Engine != null)
+            {
+                sb.AppendLine("\tMODULE");
+                sb.AppendLine("\t{");
+                sb.AppendLine("\t\tname = ModuleEngines");
+                sb.AppendLine("\t\tisEnabled = True");
+                sb.AppendLine("\t\tstaged = False");
+                sb.AppendLine("\t\tflameout = False");
+                sb.AppendLine("\t\tcurrentThrottle = 0");
+                sb.AppendLine("\t\tstagingEnabled = True");
+                sb.AppendLine("\t}");
+            }
+
+            if (p.Part.IsParachute)
+            {
+                sb.AppendLine("\tMODULE");
+                sb.AppendLine("\t{");
+                sb.AppendLine("\t\tname = ModuleParachute");
+                sb.AppendLine("\t\tisEnabled = True");
+                sb.AppendLine("\t\tpersistentState = STOWED");
+                sb.AppendLine("\t\tstagingEnabled = True");
+                sb.AppendLine("\t}");
+            }
+
             // Export resources
             foreach (var res in p.Part.Resources)
             {
