@@ -38,8 +38,8 @@ public static class CraftWriter
             sb.AppendLine("\tattRot0 = 0,0,0,1");
             sb.AppendLine("\tmir = 1,1,1");
             sb.AppendLine("\tsymMethod = Radial");
-            sb.AppendLine("\tautostrutMode = Off");
-            sb.AppendLine("\trigidAttachment = False");
+            sb.AppendLine($"\tautostrutMode = {p.AutostrutMode}");
+            sb.AppendLine($"\trigidAttachment = {(p.RigidAttachment ? "True" : "False")}");
             sb.AppendLine($"\tistg = {p.IgnitionStage}");
             sb.AppendLine("\tresPri = 0");
             sb.AppendLine($"\tdstg = {p.DecoupleStage}");

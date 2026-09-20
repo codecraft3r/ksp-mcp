@@ -27,6 +27,9 @@ public class CraftPartInstance
     public int StageSequenceOrder { get; set; } = -1;
     public int SeparationIndex { get; set; } = -1;
 
+    public string AutostrutMode { get; set; } = "Grandparent";
+    public bool RigidAttachment { get; set; } = true;
+
     public CraftPartInstance(PartInfo part, string uid, uint persistentId)
     {
         Part = part;
