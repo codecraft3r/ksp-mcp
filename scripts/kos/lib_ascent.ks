@@ -1,4 +1,4 @@
-// lib_ascent.ks - KSP Autonomous Ascent Guidance
+// lib_ascent.ks - KSP Autonomous Ascent Guidance with Live HUD
 @LAZYGLOBAL OFF.
 
 GLOBAL FUNCTION LaunchToOrbit {
@@ -12,15 +12,20 @@ GLOBAL FUNCTION LaunchToOrbit {
     LOCK THROTTLE TO 1.0.
     LOCK STEERING TO HEADING(targetHeading, 90).
 
-    PRINT "T-0: Ignition and Lift-off!".
-    STAGE. // Ignites Mammoth Booster (Stage 5)
+    IF SHIP:STATUS = "PRELAUNCH" {
+        PRINT "T-0: Ignition and Lift-off!".
+        STAGE. // Ignites Mammoth Booster (Stage 5)
+    } ELSE {
+        PRINT "Ascent burn in progress...".
+    }
 
-    LOCAL stagedBooster IS FALSE.
+    LOCAL stagedBooster IS (STAGE:NUMBER < 5).
 
+    // Ascent gravity turn loop
     UNTIL SHIP:APOAPSIS >= targetApoapsis {
         // When Mammoth booster burns out, a single STAGE fires Stage 4 (drops booster + ignites Rhino)
         IF NOT stagedBooster AND THROTTLE > 0 AND MAXTHRUST > 0 AND STAGE:LIQUIDFUEL < 1 {
-            PRINT "Mammoth booster burnout. Jettisoning booster & igniting Cruiser!".
+            PRINT "Mammoth booster burnout. Staging to Cruiser!".
             STAGE. // Stage 4: Booster decoupler + Rhino ignition
             SET stagedBooster TO TRUE.
             PRINT "Rhino interplanetary cruiser engine ignited!".
@@ -32,6 +37,8 @@ GLOBAL FUNCTION LaunchToOrbit {
             LOCAL targetPitch IS 90 - (frac * 85).
             LOCK STEERING TO HEADING(targetHeading, targetPitch).
         }
+
+        PRINT "ALT: " + ROUND(SHIP:ALTITUDE / 1000, 1) + "km | APO: " + ROUND(SHIP:APOAPSIS / 1000, 1) + "km | SPD: " + ROUND(SHIP:VELOCITY:ORBIT:MAG) + " m/s | LF: " + ROUND(STAGE:LIQUIDFUEL) AT (0, 8).
         WAIT 0.1.
     }
 

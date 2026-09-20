@@ -92,15 +92,15 @@ public class CraftBuilderTests
         var legs = vessel.Parts.Where(p => p.Part.Name == "landingLeg1-2").ToList();
         Assert.Equal(4, legs.Count);
 
-        // Verify multi-stage staging order: Mammoth (8) > Rhino (6) > Poodle (4) > Terrier (2)
+        // Verify multi-stage staging order: Mammoth (5) > Rhino (4) > Poodle (3) > Terrier (2)
         var mammoth = vessel.Parts.First(p => p.Part.Name == "Size3EngineCluster");
         var rhino = vessel.Parts.First(p => p.Part.Name == "Size3AdvancedEngine");
         var poodle = vessel.Parts.First(p => p.Part.Name == "liquidEngine2-2_v2");
         var terrier = vessel.Parts.First(p => p.Part.Name == "liquidEngine3_v2");
 
-        Assert.Equal(8, mammoth.IgnitionStage);
-        Assert.Equal(6, rhino.IgnitionStage);
-        Assert.Equal(4, poodle.IgnitionStage);
+        Assert.Equal(5, mammoth.IgnitionStage);
+        Assert.Equal(4, rhino.IgnitionStage);
+        Assert.Equal(3, poodle.IgnitionStage);
         Assert.Equal(2, terrier.IgnitionStage);
 
         var craftText = CraftWriter.GenerateCraftString(vessel);
