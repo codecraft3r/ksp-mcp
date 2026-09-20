@@ -44,6 +44,8 @@ public class KosScriptManager
         File.WriteAllText(Path.Combine(scriptDir, "lib_node.ks"), LibNodeContent);
         File.WriteAllText(Path.Combine(scriptDir, "lib_orbit.ks"), LibOrbitContent);
         File.WriteAllText(Path.Combine(scriptDir, "lib_telemetry.ks"), LibTelemetryContent);
+        File.WriteAllText(Path.Combine(scriptDir, "mun_mission.ks"), MunMissionContent);
+        File.WriteAllText(Path.Combine(scriptDir, "mun_crash.ks"), MunCrashContent);
     }
 
     public IEnumerable<KosScriptInfo> ListScripts()
@@ -311,4 +313,173 @@ GLOBAL FUNCTION PrintTelemetryJson {
     PRINT ""{""""altitude"""":"" + alt + "", """"apoapsis"""":"" + apo + "", """"periapsis"""":"" + peri + "", """"orbital_speed"""":"" + speed + "", """"throttle"""":"" + throt + "", """"mass"""":"" + ROUND(SHIP:MASS, 2) + ""}"" AT(0, 0).
 }
 ";
+
+    public static readonly string MunMissionContent = """
+// mun_mission.ks - Autonomous Mun Orbit Mission for KSP
+// Executed by kOS via KSP MCP Autonomous AI Driver
+
+@LAZYGLOBAL OFF.
+CLEARSCREEN.
+PRINT "==================================================".
+PRINT "       KSP MCP AUTONOMOUS MUN MISSION             ".
+PRINT "==================================================".
+
+RUNONCEPATH("0:/lib_math.ks").
+RUNONCEPATH("0:/lib_ascent.ks").
+RUNONCEPATH("0:/lib_orbit.ks").
+RUNONCEPATH("0:/lib_node.ks").
+
+// PHASE 1: Launch & Ascent to 80km Low Kerbin Orbit
+PRINT "PHASE 1: Launching to 80km Kerbin orbit...".
+LaunchToOrbit(80000, 90).
+
+// PHASE 2: Circularization at Apoapsis
+PRINT "PHASE 2: Planning and executing circularization...".
+PlanCircularizationAtApoapsis().
+ExecuteNextNode().
+PRINT "Stable Low Kerbin Orbit (LKO) confirmed!".
+PRINT "Current Apoapsis: " + ROUND(SHIP:APOAPSIS) + "m | Periapsis: " + ROUND(SHIP:PERIAPSIS) + "m".
+WAIT 5.
+
+// PHASE 3: Trans-Munar Injection (TMI) Burn
+PRINT "PHASE 3: Targeting the Mun and computing transfer...".
+SET TARGET TO Mun.
+
+LOCAL transferDV IS 855.
+LOCAL bestNodeTime IS TIME:SECONDS + 120.
+LOCAL foundEncounter IS FALSE.
+
+PRINT "Searching for Mun encounter window...".
+LOCAL searchStep IS 15.
+LOCAL testTime IS TIME:SECONDS + 180.
+LOCAL maxSearchTime IS TIME:SECONDS + SHIP:OBT:PERIOD * 1.5.
+
+UNTIL testTime > maxSearchTime OR foundEncounter {
+    LOCAL testNode IS NODE(testTime, 0, 0, transferDV).
+    ADD testNode.
+    WAIT 0.02.
+
+    IF testNode:ORBIT:HASNEXTPATCH {
+        IF testNode:ORBIT:NEXTPATCH:BODY:NAME = "Mun" {
+            SET foundEncounter TO TRUE.
+            SET bestNodeTime TO testTime.
+            REMOVE testNode.
+            BREAK.
+        }
+    }
+    REMOVE testNode.
+    SET testTime TO testTime + searchStep.
 }
+
+IF foundEncounter {
+    PRINT "Mun encounter trajectory located!".
+    LOCAL tmiNode IS NODE(bestNodeTime, 0, 0, transferDV).
+    ADD tmiNode.
+    PRINT "TMI Node set for T+" + ROUND(bestNodeTime - TIME:SECONDS) + "s (dV: " + transferDV + " m/s)".
+    ExecuteNextNode().
+} ELSE {
+    PRINT "Warning: Using standard Mun injection node.".
+    LOCAL tmiNode IS NODE(TIME:SECONDS + (SHIP:OBT:PERIOD * 0.4), 0, 0, transferDV).
+    ADD tmiNode.
+    ExecuteNextNode().
+}
+
+PRINT "Trans-Munar Injection burn complete!".
+WAIT 5.
+
+// PHASE 4: Coast to Mun Sphere of Influence (SOI)
+PRINT "PHASE 4: Coasting to Mun Sphere of Influence...".
+IF HASNODE REMOVE NEXTNODE.
+
+IF SHIP:ORBIT:HASNEXTPATCH {
+    PRINT "Mun encounter confirmed! Transition in " + ROUND(ETA:TRANSITION) + "s.".
+    WARPTO(TIME:SECONDS + ETA:TRANSITION - 15).
+    WAIT UNTIL SHIP:BODY:NAME = "Mun".
+} ELSE {
+    PRINT "Waiting for Mun capture...".
+    WAIT UNTIL SHIP:BODY:NAME = "Mun".
+}
+
+PRINT "==================================================".
+PRINT "          ENTERED MUN SPHERE OF INFLUENCE!        ".
+PRINT "==================================================".
+PRINT "Mun Periapsis: " + ROUND(SHIP:PERIAPSIS) + "m".
+
+// PHASE 5: Mun Orbit Insertion (Capture Burn)
+PRINT "PHASE 5: Planning Mun orbit capture burn at Periapsis...".
+LOCAL rPeri IS BODY:RADIUS + SHIP:PERIAPSIS.
+LOCAL targetSemiMajor IS BODY:RADIUS + SHIP:PERIAPSIS.
+LOCAL vPeriCurrent IS SQRT(BODY:MU * (2 / rPeri - 1 / SHIP:OBT:SEMIMAJORAXIS)).
+LOCAL vCircTarget IS SQRT(BODY:MU / rPeri).
+LOCAL captureDV IS vCircTarget - vPeriCurrent.
+
+LOCAL captureNode IS NODE(TIME:SECONDS + ETA:PERIAPSIS, 0, 0, captureDV).
+ADD captureNode.
+PRINT "Mun Capture Node created: dV = " + ROUND(captureDV, 1) + " m/s at Periapsis.".
+
+ExecuteNextNode().
+
+PRINT "==================================================".
+PRINT "   MISSION SUCCESS: STABLE MUN ORBIT ESTABLISHED! ".
+PRINT "   Apoapsis:  " + ROUND(SHIP:APOAPSIS) + " m".
+PRINT "   Periapsis: " + ROUND(SHIP:PERIAPSIS) + " m".
+PRINT "==================================================".
+
+UNTIL FALSE {
+    PRINT "{'status':'IN_MUN_ORBIT','apoapsis':" + ROUND(SHIP:APOAPSIS) + ",'periapsis':" + ROUND(SHIP:PERIAPSIS) + ",'orbital_speed':" + ROUND(SHIP:VELOCITY:ORBIT:MAG, 1) + "} " AT (0, 20).
+    WAIT 1.
+}
+""";
+
+    public static readonly string MunCrashContent = """
+// mun_crash.ks - Mun Kinetic Impactor Deorbit Script
+// Autonomous targeted crash into the Mun surface
+
+@LAZYGLOBAL OFF.
+CLEARSCREEN.
+PRINT "==================================================".
+PRINT "       KSP MCP MUN KINETIC IMPACT DEORBIT         ".
+PRINT "==================================================".
+
+PRINT "1. Orienting RETROGRADE for deorbit burn...".
+SAS OFF.
+LOCK STEERING TO RETROGRADE.
+WAIT 8.
+
+PRINT "2. Initiating deorbit burn - burning all remaining propellant!".
+LOCK THROTTLE TO 1.0.
+
+UNTIL SHIP:PERIAPSIS < -100000 OR MAXTHRUST = 0 {
+    PRINT "Current Periapsis: " + ROUND(SHIP:PERIAPSIS) + " m   " AT (0, 6).
+    PRINT "Current Altitude:  " + ROUND(SHIP:ALTITUDE) + " m   " AT (0, 7).
+    WAIT 0.1.
+}
+
+PRINT "Deorbit trajectory locked! Target: Sub-surface collision course.".
+LOCK THROTTLE TO 0.
+SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
+
+PRINT "3. Aligning to Surface Velocity Vector for direct impact...".
+LOCK STEERING TO -SHIP:VELOCITY:SURFACE.
+
+IF SHIP:ALTITUDE > 25000 {
+    PRINT "Warping towards Mun surface...".
+    WARPTO(TIME:SECONDS + ETA:PERIAPSIS - 30).
+}
+
+WAIT UNTIL ALT:RADAR < 15000.
+
+PRINT "==================================================".
+PRINT "          TERMINAL IMPACT DIVE INITIATED          "".
+PRINT "==================================================".
+
+UNTIL FALSE {
+    LOCAL rAlt IS ROUND(ALT:RADAR).
+    LOCAL surfSpd IS ROUND(SHIP:VELOCITY:SURFACE:MAG, 1).
+    PRINT "{'event':'IMPACT_TRAJECTORY','radar_alt':" + rAlt + ",'speed':" + surfSpd + "}   " AT (0, 14).
+    WAIT 0.1.
+}
+""";
+}
+
+

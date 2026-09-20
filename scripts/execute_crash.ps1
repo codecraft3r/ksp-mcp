@@ -1,8 +1,7 @@
-Write-Host "Connecting to kOS Telnet server on 127.0.0.1:5410..." -ForegroundColor Cyan
+Write-Host "Connecting to kOS Telnet to initiate Mun Deorbit / Impact..." -ForegroundColor Red
 
 $socket = New-Object System.Net.Sockets.TcpClient("127.0.0.1", 5410)
 $stream = $socket.GetStream()
-$reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::ASCII)
 $writer = New-Object System.IO.StreamWriter($stream, [System.Text.Encoding]::ASCII)
 $writer.AutoFlush = $true
 
@@ -22,35 +21,36 @@ function Read-TelnetOutput([int]$waitMs = 500) {
     return $sb.ToString()
 }
 
-# Read initial banner/menu
-$init = Read-TelnetOutput 800
-Write-Host $init -ForegroundColor DarkGray
-
-# 1. Select CPU 1
-Write-Host "`n[AUTOPILOT] Selecting CPU 1 (Mun_Explorer_I)..." -ForegroundColor Yellow
+# 1. Attach to CPU 1
+$init = Read-TelnetOutput 500
+Write-Host "[kOS Menu] Selecting CPU 1..." -ForegroundColor Yellow
 $writer.WriteLine("1")
-$cpuOut = Read-TelnetOutput 800
-Write-Host $cpuOut -ForegroundColor DarkGray
+Start-Sleep -Milliseconds 600
 
-# 2. Switch to Archive (0:/)
-Write-Host "[AUTOPILOT] Switching to Archive: SWITCH TO 0." -ForegroundColor Cyan
+# 2. Send Ctrl-C to break the telemetry loop
+Write-Host "[AUTOPILOT] Sending Ctrl-C to stop orbital telemetry..." -ForegroundColor Yellow
+$ctrlC = [byte[]]@(0x03)
+$stream.Write($ctrlC, 0, 1)
+$stream.Flush()
+Start-Sleep -Milliseconds 800
+
+$out = Read-TelnetOutput 500
+Write-Host $out -ForegroundColor DarkGray
+
+# 3. Switch to archive and run mun_crash.ks
+Write-Host "[AUTOPILOT] Switching to 0:/ and executing mun_crash.ks..." -ForegroundColor Red
 $writer.WriteLine("SWITCH TO 0.")
-$swOut = Read-TelnetOutput 500
-Write-Host $swOut -ForegroundColor DarkGray
+Start-Sleep -Milliseconds 400
+$writer.WriteLine('RUNPATH("0:/mun_crash.ks").')
 
-# 3. Launch Mun Mission
-Write-Host "`n[AUTOPILOT] >>> LAUNCHING MUN MISSION: RUNPATH(`"0:/mun_mission.ks`"). <<<`n" -ForegroundColor Green
-$writer.WriteLine('RUNPATH("0:/mun_mission.ks").')
-
-# 4. Stream mission logs in real-time
+# 4. Stream real-time impact logs
 $startTime = [DateTime]::UtcNow
-$maxSeconds = 600 # 10 minutes
-$missionSuccess = $false
+$maxSeconds = 300 # 5 minutes
 
 $buf = New-Object byte[] 4096
 $lineBuffer = ""
 
-while (([DateTime]::UtcNow - $startTime).TotalSeconds -lt $maxSeconds -and -not $missionSuccess) {
+while (([DateTime]::UtcNow - $startTime).TotalSeconds -lt $maxSeconds) {
     if ($stream.DataAvailable) {
         $read = $stream.Read($buf, 0, $buf.Length)
         if ($read -gt 0) {
@@ -64,13 +64,10 @@ while (([DateTime]::UtcNow - $startTime).TotalSeconds -lt $maxSeconds -and -not 
                 $lineBuffer = $lineBuffer.Substring($idx + 1)
                 
                 if ($line.Trim().Length -gt 0) {
-                    if ($line.Contains("MISSION SUCCESS") -or $line.Contains("IN_MUN_ORBIT")) {
-                        Write-Host "[MISSION] $line" -ForegroundColor Green
-                        $missionSuccess = $true
-                    } elseif ($line.Contains("PHASE") -or $line.Contains("T-0") -or $line.Contains("ENTERED MUN")) {
-                        Write-Host "`n[MISSION] >>> $line <<<" -ForegroundColor Yellow
-                    } elseif ($line.Contains("Error") -or $line.Contains("Exception")) {
-                        Write-Host "[MISSION ERROR] $line" -ForegroundColor Red
+                    if ($line.Contains("IMPACT") -or $line.Contains("TERMINAL") -or $line.Contains("collision")) {
+                        Write-Host "[CRASH TELEMETRY] $line" -ForegroundColor Red
+                    } elseif ($line.Contains("Deorbit") -or $line.Contains("Periapsis") -or $line.Contains("Altitude")) {
+                        Write-Host "[DEORBIT] $line" -ForegroundColor Yellow
                     } else {
                         Write-Host "[kOS] $line" -ForegroundColor White
                     }
@@ -82,5 +79,5 @@ while (([DateTime]::UtcNow - $startTime).TotalSeconds -lt $maxSeconds -and -not 
     }
 }
 
-Write-Host "`n[AUTOPILOT] Session completed. Closing connection." -ForegroundColor Cyan
+Write-Host "`n[AUTOPILOT] Impact sequence complete." -ForegroundColor Red
 $socket.Close()
