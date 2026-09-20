@@ -200,6 +200,391 @@ public class StageBuilder
         return vessel;
     }
 
+    public CraftVessel BuildJoolRoundTripLander(string vesselName = "Jool_Explorer_I")
+    {
+        var vessel = new CraftVessel
+        {
+            Name = vesselName,
+            Description = "Autonomous interplanetary heavy vehicle designed for Jool arrival, Vall/moon landing, and Kerbin return.",
+            Type = "VAB",
+            VesselType = "Ship"
+        };
+
+        // 1. Reentry Capsule
+        var podInfo = _catalog.GetPart("mk1pod_v2") ?? _catalog.GetPart("mk1pod")
+            ?? throw new InvalidOperationException("Command pod not found.");
+        var root = CreateInstance(podInfo, new Vector3(0, 25f, 0));
+        vessel.RootPart = root;
+        vessel.Parts.Add(root);
+
+        // Parachute
+        var chuteInfo = _catalog.GetPart("parachuteSingle");
+        CraftPartInstance? chute = null;
+        if (chuteInfo != null && root.Part.TopNode != null && chuteInfo.BottomNode != null)
+        {
+            chute = CreateInstance(chuteInfo);
+            AttachStack(root, root.Part.TopNode.Id, chute, chuteInfo.BottomNode.Id);
+            vessel.Parts.Add(chute);
+        }
+
+        // Heat Shield
+        var hsInfo = _catalog.GetPart("HeatShield1")
+            ?? throw new InvalidOperationException("HeatShield1 not found.");
+        var hs = CreateInstance(hsInfo);
+        AttachStack(root, root.Part.BottomNode!.Id, hs, hsInfo.TopNode!.Id);
+        vessel.Parts.Add(hs);
+
+        // Payload Decoupler
+        var decInfo1 = _catalog.GetPart("Decoupler_1")
+            ?? throw new InvalidOperationException("Decoupler_1 not found.");
+        var decPayload = CreateInstance(decInfo1);
+        AttachStack(hs, hs.Part.BottomNode!.Id, decPayload, decInfo1.TopNode!.Id);
+        vessel.Parts.Add(decPayload);
+
+        // 2. Moon Lander Stage (Vall / Low-gravity lander)
+        var landerTankInfo = _catalog.GetPart("fuelTank_long")
+            ?? throw new InvalidOperationException("fuelTank_long not found.");
+        var landerTank = CreateInstance(landerTankInfo);
+        AttachStack(decPayload, decPayload.Part.BottomNode!.Id, landerTank, landerTankInfo.TopNode!.Id);
+        vessel.Parts.Add(landerTank);
+
+        var landerEngineInfo = _catalog.GetPart("liquidEngine3_v2")
+            ?? throw new InvalidOperationException("liquidEngine3_v2 not found.");
+        var landerEngine = CreateInstance(landerEngineInfo);
+        AttachStack(landerTank, landerTank.Part.BottomNode!.Id, landerEngine, landerEngineInfo.TopNode!.Id);
+        vessel.Parts.Add(landerEngine);
+
+        // 4x Heavy Landing Legs attached radially to the lander tank
+        var legInfo = _catalog.GetPart("landingLeg1-2") ?? _catalog.GetPart("landingLeg1");
+        if (legInfo != null)
+        {
+            var angles = new[] { 0.0, 90.0, 180.0, 270.0 };
+            var legRadius = 0.65f;
+            var legY = landerTank.Position.Y - 0.5f;
+
+            foreach (var deg in angles)
+            {
+                var rad = deg * (Math.PI / 180.0);
+                var lx = (float)(Math.Cos(rad) * legRadius);
+                var lz = (float)(Math.Sin(rad) * legRadius);
+                var leg = CreateInstance(legInfo, new Vector3(lx, legY, lz));
+                landerTank.Children.Add(leg);
+                leg.Parent = landerTank;
+                vessel.Parts.Add(leg);
+            }
+        }
+
+        // Lander Decoupler
+        var decLander = CreateInstance(decInfo1);
+        AttachStack(landerEngine, landerEngine.Part.BottomNode!.Id, decLander, decInfo1.TopNode!.Id);
+        vessel.Parts.Add(decLander);
+
+        // 3. Jool Interplanetary Transfer Stage (3.75m S3-7200 + Rhino 2000kN)
+        var joolTankInfo = _catalog.GetPart("Size3MediumTank")
+            ?? throw new InvalidOperationException("Size3MediumTank not found.");
+        var joolTank = CreateInstance(joolTankInfo);
+        AttachStack(decLander, decLander.Part.BottomNode!.Id, joolTank, joolTankInfo.TopNode!.Id);
+        vessel.Parts.Add(joolTank);
+
+        var joolEngineInfo = _catalog.GetPart("Size3AdvancedEngine")
+            ?? throw new InvalidOperationException("Size3AdvancedEngine not found.");
+        var joolEngine = CreateInstance(joolEngineInfo);
+        AttachStack(joolTank, joolTank.Part.BottomNode!.Id, joolEngine, joolEngineInfo.TopNode!.Id);
+        vessel.Parts.Add(joolEngine);
+
+        // Heavy Booster Decoupler (3.75m TD-37)
+        var decInfo3 = _catalog.GetPart("Decoupler_3") ?? _catalog.GetPart("Decoupler_2") ?? decInfo1;
+        var decBooster = CreateInstance(decInfo3);
+        AttachStack(joolEngine, joolEngine.Part.BottomNode!.Id, decBooster, decInfo3.TopNode!.Id);
+        vessel.Parts.Add(decBooster);
+
+        // 4. Kerbin Heavy Booster Stage (3.75m S3-14400 + Mammoth 3200-4000kN)
+        var boosterTankInfo = _catalog.GetPart("Size3LargeTank")
+            ?? throw new InvalidOperationException("Size3LargeTank not found.");
+        var boosterTank = CreateInstance(boosterTankInfo);
+        AttachStack(decBooster, decBooster.Part.BottomNode!.Id, boosterTank, boosterTankInfo.TopNode!.Id);
+        vessel.Parts.Add(boosterTank);
+
+        var mammothInfo = _catalog.GetPart("Size3EngineCluster")
+            ?? throw new InvalidOperationException("Size3EngineCluster not found.");
+        var mammoth = CreateInstance(mammothInfo);
+        AttachStack(boosterTank, boosterTank.Part.BottomNode!.Id, mammoth, mammothInfo.TopNode!.Id);
+        vessel.Parts.Add(mammoth);
+
+        // 4x Aerodynamic Fins around 3.75m base
+        var finInfo = _catalog.GetPart("R8winglet");
+        if (finInfo != null)
+        {
+            var angles = new[] { 0.0, 90.0, 180.0, 270.0 };
+            var finRadius = 1.95f;
+            var finY = boosterTank.Position.Y - 2.5f;
+
+            foreach (var deg in angles)
+            {
+                var rad = deg * (Math.PI / 180.0);
+                var fx = (float)(Math.Cos(rad) * finRadius);
+                var fz = (float)(Math.Sin(rad) * finRadius);
+                var fin = CreateInstance(finInfo, new Vector3(fx, finY, fz));
+                boosterTank.Children.Add(fin);
+                fin.Parent = boosterTank;
+                vessel.Parts.Add(fin);
+            }
+        }
+
+        // Staging Setup (Descending index: Highest is ignited first)
+        // Stage 6: Mammoth Booster Engine
+        // Stage 5: Booster Decoupler (TD-37)
+        // Stage 4: Jool Transfer Engine (Rhino)
+        // Stage 3: Lander Decoupler (TD-12)
+        // Stage 2: Lander Engine (Terrier)
+        // Stage 1: Capsule Decoupler (TD-12)
+        // Stage 0: Reentry Parachute
+        int stage = 0;
+        if (chute != null)
+        {
+            chute.IgnitionStage = stage;
+            chute.StageIndex = 0;
+        }
+
+        stage++;
+        decPayload.IgnitionStage = stage;
+        decPayload.DecoupleStage = stage;
+        decPayload.StageIndex = 0;
+
+        stage++;
+        landerEngine.IgnitionStage = stage;
+        landerEngine.StageIndex = 0;
+
+        stage++;
+        decLander.IgnitionStage = stage;
+        decLander.DecoupleStage = stage;
+        decLander.StageIndex = 0;
+
+        stage++;
+        joolEngine.IgnitionStage = stage;
+        joolEngine.StageIndex = 0;
+
+        stage++;
+        decBooster.IgnitionStage = stage;
+        decBooster.DecoupleStage = stage;
+        decBooster.StageIndex = 0;
+
+        stage++;
+        mammoth.IgnitionStage = stage;
+        mammoth.StageIndex = 0;
+
+        return vessel;
+    }
+
+    public CraftVessel BuildTyloMasterLander(string vesselName = "Tylo_Master_Lander")
+    {
+        var vessel = new CraftVessel
+        {
+            Name = vesselName,
+            Description = "Extreme-gravity interplanetary heavy lander designed for the hardest destination: Tylo (0.785g, 0 atmosphere, ~5000 m/s landing/ascent) and Kerbin return.",
+            Type = "VAB",
+            VesselType = "Ship"
+        };
+
+        // 1. Reentry Capsule (Stage 0 & 1)
+        var podInfo = _catalog.GetPart("mk1pod_v2") ?? _catalog.GetPart("mk1pod")
+            ?? throw new InvalidOperationException("mk1pod not found.");
+        var root = CreateInstance(podInfo, new Vector3(0, 32f, 0));
+        vessel.RootPart = root;
+        vessel.Parts.Add(root);
+
+        // Parachute
+        var chuteInfo = _catalog.GetPart("parachuteSingle");
+        CraftPartInstance? chute = null;
+        if (chuteInfo != null && root.Part.TopNode != null && chuteInfo.BottomNode != null)
+        {
+            chute = CreateInstance(chuteInfo);
+            AttachStack(root, root.Part.TopNode.Id, chute, chuteInfo.BottomNode.Id);
+            vessel.Parts.Add(chute);
+        }
+
+        // Heat Shield (Kerbin atmospheric reentry from interplanetary velocity)
+        var hsInfo = _catalog.GetPart("HeatShield1")
+            ?? throw new InvalidOperationException("HeatShield1 not found.");
+        var hs = CreateInstance(hsInfo);
+        AttachStack(root, root.Part.BottomNode!.Id, hs, hsInfo.TopNode!.Id);
+        vessel.Parts.Add(hs);
+
+        // Payload Decoupler
+        var decInfo1 = _catalog.GetPart("Decoupler_1")
+            ?? throw new InvalidOperationException("Decoupler_1 not found.");
+        var decPayload = CreateInstance(decInfo1);
+        AttachStack(hs, hs.Part.BottomNode!.Id, decPayload, decInfo1.TopNode!.Id);
+        vessel.Parts.Add(decPayload);
+
+        // 2. Tylo Ascent & Kerbin Return Stage (Stage 2)
+        var ascentTankInfo = _catalog.GetPart("fuelTank_long")
+            ?? throw new InvalidOperationException("fuelTank_long not found.");
+        var ascentTank = CreateInstance(ascentTankInfo);
+        AttachStack(decPayload, decPayload.Part.BottomNode!.Id, ascentTank, ascentTankInfo.TopNode!.Id);
+        vessel.Parts.Add(ascentTank);
+
+        var ascentEngineInfo = _catalog.GetPart("liquidEngine3_v2")
+            ?? throw new InvalidOperationException("liquidEngine3_v2 not found.");
+        var ascentEngine = CreateInstance(ascentEngineInfo);
+        AttachStack(ascentTank, ascentTank.Part.BottomNode!.Id, ascentEngine, ascentEngineInfo.TopNode!.Id);
+        vessel.Parts.Add(ascentEngine);
+
+        // Decoupler between Tylo Ascent and Descent Stages
+        var decAscent = CreateInstance(decInfo1);
+        AttachStack(ascentEngine, ascentEngine.Part.BottomNode!.Id, decAscent, decInfo1.TopNode!.Id);
+        vessel.Parts.Add(decAscent);
+
+        // 3. Tylo Heavy Descent / Braking Stage (Stage 4)
+        var descentTankInfo = _catalog.GetPart("Rockomax32_BW")
+            ?? throw new InvalidOperationException("Rockomax32_BW not found.");
+        var descentTank = CreateInstance(descentTankInfo);
+        AttachStack(decAscent, decAscent.Part.BottomNode!.Id, descentTank, descentTankInfo.TopNode!.Id);
+        vessel.Parts.Add(descentTank);
+
+        var descentEngineInfo = _catalog.GetPart("liquidEngine2-2_v2")
+            ?? throw new InvalidOperationException("liquidEngine2-2_v2 not found.");
+        var descentEngine = CreateInstance(descentEngineInfo);
+        AttachStack(descentTank, descentTank.Part.BottomNode!.Id, descentEngine, descentEngineInfo.TopNode!.Id);
+        vessel.Parts.Add(descentEngine);
+
+        // 4x Heavy Landing Legs mounted radially on the 2.5m descent tank
+        var legInfo = _catalog.GetPart("landingLeg1-2") ?? _catalog.GetPart("landingLeg1");
+        if (legInfo != null)
+        {
+            var angles = new[] { 0.0, 90.0, 180.0, 270.0 };
+            var legRadius = 1.35f;
+            var legY = descentTank.Position.Y - 1.0f;
+
+            foreach (var deg in angles)
+            {
+                var rad = deg * (Math.PI / 180.0);
+                var lx = (float)(Math.Cos(rad) * legRadius);
+                var lz = (float)(Math.Sin(rad) * legRadius);
+                var leg = CreateInstance(legInfo, new Vector3(lx, legY, lz));
+                descentTank.Children.Add(leg);
+                leg.Parent = descentTank;
+                vessel.Parts.Add(leg);
+            }
+        }
+
+        // Decoupler between Tylo Lander and Interplanetary Transfer Stage (2.5m TD-25)
+        var decInfo2 = _catalog.GetPart("Decoupler_2") ?? decInfo1;
+        var decTransfer = CreateInstance(decInfo2);
+        AttachStack(descentEngine, descentEngine.Part.BottomNode!.Id, decTransfer, decInfo2.TopNode!.Id);
+        vessel.Parts.Add(decTransfer);
+
+        // 4. Jool & Tylo Interplanetary Cruiser Stage (3.75m S3-14400 + Rhino 2000kN) (Stage 6)
+        var cruiserTankInfo = _catalog.GetPart("Size3LargeTank")
+            ?? throw new InvalidOperationException("Size3LargeTank not found.");
+        var cruiserTank = CreateInstance(cruiserTankInfo);
+        AttachStack(decTransfer, decTransfer.Part.BottomNode!.Id, cruiserTank, cruiserTankInfo.TopNode!.Id);
+        vessel.Parts.Add(cruiserTank);
+
+        var cruiserEngineInfo = _catalog.GetPart("Size3AdvancedEngine")
+            ?? throw new InvalidOperationException("Size3AdvancedEngine not found.");
+        var cruiserEngine = CreateInstance(cruiserEngineInfo);
+        AttachStack(cruiserTank, cruiserTank.Part.BottomNode!.Id, cruiserEngine, cruiserEngineInfo.TopNode!.Id);
+        vessel.Parts.Add(cruiserEngine);
+
+        // Decoupler between Interplanetary Stage and Liftoff Booster (3.75m TD-37)
+        var decInfo3 = _catalog.GetPart("Decoupler_3") ?? decInfo2;
+        var decBooster = CreateInstance(decInfo3);
+        AttachStack(cruiserEngine, cruiserEngine.Part.BottomNode!.Id, decBooster, decInfo3.TopNode!.Id);
+        vessel.Parts.Add(decBooster);
+
+        // 5. Kerbin Super-Heavy Booster Stage (3.75m S3-14400 + S3-7200 + Mammoth 3200-4000kN) (Stage 8)
+        var boosterTank1 = CreateInstance(cruiserTankInfo);
+        AttachStack(decBooster, decBooster.Part.BottomNode!.Id, boosterTank1, cruiserTankInfo.TopNode!.Id);
+        vessel.Parts.Add(boosterTank1);
+
+        var boosterTank2Info = _catalog.GetPart("Size3MediumTank") ?? cruiserTankInfo;
+        var boosterTank2 = CreateInstance(boosterTank2Info);
+        AttachStack(boosterTank1, boosterTank1.Part.BottomNode!.Id, boosterTank2, boosterTank2Info.TopNode!.Id);
+        vessel.Parts.Add(boosterTank2);
+
+        var mammothInfo = _catalog.GetPart("Size3EngineCluster")
+            ?? throw new InvalidOperationException("Size3EngineCluster not found.");
+        var mammoth = CreateInstance(mammothInfo);
+        AttachStack(boosterTank2, boosterTank2.Part.BottomNode!.Id, mammoth, mammothInfo.TopNode!.Id);
+        vessel.Parts.Add(mammoth);
+
+        // 4x Aerodynamic Fins around 3.75m booster base
+        var finInfo = _catalog.GetPart("R8winglet");
+        if (finInfo != null)
+        {
+            var angles = new[] { 0.0, 90.0, 180.0, 270.0 };
+            var finRadius = 1.95f;
+            var finY = boosterTank2.Position.Y - 1.5f;
+
+            foreach (var deg in angles)
+            {
+                var rad = deg * (Math.PI / 180.0);
+                var fx = (float)(Math.Cos(rad) * finRadius);
+                var fz = (float)(Math.Sin(rad) * finRadius);
+                var fin = CreateInstance(finInfo, new Vector3(fx, finY, fz));
+                boosterTank2.Children.Add(fin);
+                fin.Parent = boosterTank2;
+                vessel.Parts.Add(fin);
+            }
+        }
+
+        // 9-Stage Descent Staging Setup (Descending index: Highest is ignited first)
+        // Stage 8: Mammoth Booster Engine
+        // Stage 7: TD-37 Booster Decoupler
+        // Stage 6: Rhino Interplanetary Cruiser Engine
+        // Stage 5: TD-25 Transfer Decoupler
+        // Stage 4: Poodle Tylo Descent Engine
+        // Stage 3: TD-12 Tylo Ascent Decoupler
+        // Stage 2: Terrier Tylo Ascent & Return Engine
+        // Stage 1: TD-12 Reentry Capsule Decoupler
+        // Stage 0: Reentry Parachute
+        int stage = 0;
+        if (chute != null)
+        {
+            chute.IgnitionStage = stage;
+            chute.StageIndex = 0;
+        }
+
+        stage++;
+        decPayload.IgnitionStage = stage;
+        decPayload.DecoupleStage = stage;
+        decPayload.StageIndex = 0;
+
+        stage++;
+        ascentEngine.IgnitionStage = stage;
+        ascentEngine.StageIndex = 0;
+
+        stage++;
+        decAscent.IgnitionStage = stage;
+        decAscent.DecoupleStage = stage;
+        decAscent.StageIndex = 0;
+
+        stage++;
+        descentEngine.IgnitionStage = stage;
+        descentEngine.StageIndex = 0;
+
+        stage++;
+        decTransfer.IgnitionStage = stage;
+        decTransfer.DecoupleStage = stage;
+        decTransfer.StageIndex = 0;
+
+        stage++;
+        cruiserEngine.IgnitionStage = stage;
+        cruiserEngine.StageIndex = 0;
+
+        stage++;
+        decBooster.IgnitionStage = stage;
+        decBooster.DecoupleStage = stage;
+        decBooster.StageIndex = 0;
+
+        stage++;
+        mammoth.IgnitionStage = stage;
+        mammoth.StageIndex = 0;
+
+        return vessel;
+    }
+
     private void AttachStack(CraftPartInstance parent, string parentNodeId, CraftPartInstance child, string childNodeId)
     {
         var pNode = parent.Part.AttachNodes.Find(n => n.Id.Equals(parentNodeId, StringComparison.OrdinalIgnoreCase))

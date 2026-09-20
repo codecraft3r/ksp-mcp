@@ -156,6 +156,64 @@ public class KspTools
                 Description = "Assembles and saves a complete multi-stage rocket directly to KSP's Ships/VAB directory. Configures node snapping, staging, and payload."
             }));
 
+        // 4b. Build Jool Round-Trip Lander
+        options.ToolCollection.Add(McpServerTool.Create(
+            (string? vesselName) =>
+            {
+                var name = string.IsNullOrWhiteSpace(vesselName) ? "Jool_Explorer_I" : vesselName;
+                var vessel = _builder.BuildJoolRoundTripLander(name);
+                var validation = CraftValidator.ValidateVessel(vessel);
+                var craftPath = Path.Combine(_config.ShipsVabPath, $"{vessel.Name}.craft");
+                CraftWriter.SaveCraft(vessel, craftPath);
+
+                return new
+                {
+                    Success = validation.IsValid,
+                    VesselName = vessel.Name,
+                    FilePath = craftPath,
+                    TotalParts = vessel.Parts.Count,
+                    TotalMassTonnes = Math.Round(validation.TotalMass, 2),
+                    validation.IsValid,
+                    validation.Errors,
+                    validation.Warnings,
+                    Description = "Super-heavy 4-stage interplanetary vehicle designed for Jool arrival, moon landing (Vall/Pol/Bop), and Kerbin return."
+                };
+            },
+            new McpServerToolCreateOptions
+            {
+                Name = "ksp_build_jool_lander",
+                Description = "Assembles and exports a super-heavy 4-stage interplanetary rocket ('Jool_Explorer_I') to Ships/VAB, equipped with a heavy Kerbodyne Mammoth booster, Rhino interplanetary cruiser, LT-2 landing gear lander, and Kerbin reentry capsule."
+            }));
+
+        // 4c. Build Tylo Master Lander
+        options.ToolCollection.Add(McpServerTool.Create(
+            (string? vesselName) =>
+            {
+                var name = string.IsNullOrWhiteSpace(vesselName) ? "Tylo_Master_Lander" : vesselName;
+                var vessel = _builder.BuildTyloMasterLander(name);
+                var validation = CraftValidator.ValidateVessel(vessel);
+                var craftPath = Path.Combine(_config.ShipsVabPath, $"{vessel.Name}.craft");
+                CraftWriter.SaveCraft(vessel, craftPath);
+
+                return new
+                {
+                    Success = validation.IsValid,
+                    VesselName = vessel.Name,
+                    FilePath = craftPath,
+                    TotalParts = vessel.Parts.Count,
+                    TotalMassTonnes = Math.Round(validation.TotalMass, 2),
+                    validation.IsValid,
+                    validation.Errors,
+                    validation.Warnings,
+                    Description = "Extreme-gravity 5-stage / 9-sequence interplanetary vehicle designed for Tylo (0.785g, 0 atmosphere, ~5,000 m/s landing/ascent) and Kerbin return."
+                };
+            },
+            new McpServerToolCreateOptions
+            {
+                Name = "ksp_build_tylo_lander",
+                Description = "Assembles and exports the ultimate Tylo Master Lander to Ships/VAB: a 253-tonne super-heavy rocket with Mammoth booster, Rhino transfer cruiser, Poodle 2.5m descent lander, and Terrier ascent return stage."
+            }));
+
         // 5. Validate Craft
         options.ToolCollection.Add(McpServerTool.Create(
             (string craftName) =>

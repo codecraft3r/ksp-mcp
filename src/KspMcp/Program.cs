@@ -90,6 +90,26 @@ public static class Program
                     Console.Error.WriteLine($"[CLI] Parts: {munVessel.Parts.Count}, Total Mass: {munVal.TotalMass}t, IsValid: {munVal.IsValid}");
                     return munVal.IsValid ? 0 : 1;
 
+                case "--build-jool":
+                    Console.Error.WriteLine("[CLI] Building Jool Explorer I (Interplanetary round-trip lander)...");
+                    var joolVessel = builder.BuildJoolRoundTripLander("Jool_Explorer_I");
+                    var joolVal = CraftValidator.ValidateVessel(joolVessel);
+                    var joolPath = Path.Combine(config.ShipsVabPath, $"{joolVessel.Name}.craft");
+                    CraftWriter.SaveCraft(joolVessel, joolPath);
+                    Console.Error.WriteLine($"[CLI] Jool vessel saved to: {joolPath}");
+                    Console.Error.WriteLine($"[CLI] Parts: {joolVessel.Parts.Count}, Total Mass: {joolVal.TotalMass:F2}t, IsValid: {joolVal.IsValid}");
+                    return joolVal.IsValid ? 0 : 1;
+
+                case "--build-tylo":
+                    Console.Error.WriteLine("[CLI] Building Tylo Master Lander (Hardest destination: 0.785g, ~5000 m/s Tylo landing/ascent + Jool return)...");
+                    var tyloVessel = builder.BuildTyloMasterLander("Tylo_Master_Lander");
+                    var tyloVal = CraftValidator.ValidateVessel(tyloVessel);
+                    var tyloPath = Path.Combine(config.ShipsVabPath, $"{tyloVessel.Name}.craft");
+                    CraftWriter.SaveCraft(tyloVessel, tyloPath);
+                    Console.Error.WriteLine($"[CLI] Tylo vessel saved to: {tyloPath}");
+                    Console.Error.WriteLine($"[CLI] Parts: {tyloVessel.Parts.Count}, Total Mass: {tyloVal.TotalMass:F2}t, IsValid: {tyloVal.IsValid}");
+                    return tyloVal.IsValid ? 0 : 1;
+
                 case "--deploy-libs":
                     Console.Error.WriteLine($"[CLI] Deploying kOS helper libraries to {config.ShipsScriptPath}...");
                     scriptManager.DeployHelperLibraries();

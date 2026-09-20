@@ -71,4 +71,43 @@ public class CraftBuilderTests
         var partNodes = parsedNodes.Where(n => n.Name == "PART").ToList();
         Assert.Equal(vessel.Parts.Count, partNodes.Count);
     }
+
+    [Fact]
+    public void BuildTyloMasterLander_GeneratesExtremeHeavyVesselWithLandingGear()
+    {
+        var catalog = new PartCatalog();
+        var builder = new StageBuilder(catalog);
+
+        var vessel = builder.BuildTyloMasterLander("Tylo_Test_Vessel");
+        Assert.NotNull(vessel.RootPart);
+        Assert.Equal(24, vessel.Parts.Count);
+
+        var validation = CraftValidator.ValidateVessel(vessel);
+        Assert.True(validation.IsValid, string.Join("; ", validation.Errors));
+        Assert.True(validation.HasCommand);
+        Assert.True(validation.HasEngines);
+        Assert.True(validation.TotalMass > 200.0, $"Expected mass > 200t, got {validation.TotalMass}t");
+
+        // Verify landing gear
+        var legs = vessel.Parts.Where(p => p.Part.Name == "landingLeg1-2").ToList();
+        Assert.Equal(4, legs.Count);
+
+        // Verify multi-stage staging order: Mammoth (8) > Rhino (6) > Poodle (4) > Terrier (2)
+        var mammoth = vessel.Parts.First(p => p.Part.Name == "Size3EngineCluster");
+        var rhino = vessel.Parts.First(p => p.Part.Name == "Size3AdvancedEngine");
+        var poodle = vessel.Parts.First(p => p.Part.Name == "liquidEngine2-2_v2");
+        var terrier = vessel.Parts.First(p => p.Part.Name == "liquidEngine3_v2");
+
+        Assert.Equal(8, mammoth.IgnitionStage);
+        Assert.Equal(6, rhino.IgnitionStage);
+        Assert.Equal(4, poodle.IgnitionStage);
+        Assert.Equal(2, terrier.IgnitionStage);
+
+        var craftText = CraftWriter.GenerateCraftString(vessel);
+        Assert.Contains("ship = Tylo_Test_Vessel", craftText);
+        Assert.Contains("Size3EngineCluster", craftText);
+        Assert.Contains("Size3AdvancedEngine", craftText);
+        Assert.Contains("liquidEngine2-2.v2", craftText);
+        Assert.Contains("landingLeg1-2", craftText);
+    }
 }

@@ -250,6 +250,22 @@ public class PartCatalog
             }
         });
 
+        RegisterPart(new PartInfo
+        {
+            Name = "Decoupler_3",
+            Title = "TD-37 Decoupler",
+            Category = "Coupling",
+            DryMass = 0.36,
+            Cost = 375,
+            BulkheadProfiles = { "size3" },
+            IsDecoupler = true,
+            AttachNodes =
+            {
+                new AttachNode { Id = "top", Position = new Vector3(0, 0.15f, 0), Orientation = new Vector3(0, 1, 0), Size = 3 },
+                new AttachNode { Id = "bottom", Position = new Vector3(0, -0.15f, 0), Orientation = new Vector3(0, -1, 0), Size = 3 }
+            }
+        });
+
         // Fuel Tanks (Size 1 - 1.25m)
         RegisterPart(new PartInfo
         {
@@ -332,6 +348,39 @@ public class PartCatalog
             Resources = { new PartResource { Name = "LiquidFuel", Amount = 1440, MaxAmount = 1440 }, new PartResource { Name = "Oxidizer", Amount = 1760, MaxAmount = 1760 } }
         });
 
+        // Fuel Tanks (Size 3 - 3.75m)
+        RegisterPart(new PartInfo
+        {
+            Name = "Size3MediumTank",
+            Title = "Kerbodyne S3-7200 Tank",
+            Category = "FuelTank",
+            DryMass = 4.5,
+            Cost = 6500,
+            BulkheadProfiles = { "size3" },
+            AttachNodes =
+            {
+                new AttachNode { Id = "top", Position = new Vector3(0, 1.931f, 0), Orientation = new Vector3(0, 1, 0), Size = 3 },
+                new AttachNode { Id = "bottom", Position = new Vector3(0, -1.937f, 0), Orientation = new Vector3(0, -1, 0), Size = 3 }
+            },
+            Resources = { new PartResource { Name = "LiquidFuel", Amount = 3240, MaxAmount = 3240 }, new PartResource { Name = "Oxidizer", Amount = 3960, MaxAmount = 3960 } }
+        });
+
+        RegisterPart(new PartInfo
+        {
+            Name = "Size3LargeTank",
+            Title = "Kerbodyne S3-14400 Tank",
+            Category = "FuelTank",
+            DryMass = 9.0,
+            Cost = 13000,
+            BulkheadProfiles = { "size3" },
+            AttachNodes =
+            {
+                new AttachNode { Id = "top", Position = new Vector3(0, 3.74f, 0), Orientation = new Vector3(0, 1, 0), Size = 3 },
+                new AttachNode { Id = "bottom", Position = new Vector3(0, -3.74f, 0), Orientation = new Vector3(0, -1, 0), Size = 3 }
+            },
+            Resources = { new PartResource { Name = "LiquidFuel", Amount = 6480, MaxAmount = 6480 }, new PartResource { Name = "Oxidizer", Amount = 7920, MaxAmount = 7920 } }
+        });
+
         // Engines
         RegisterPart(new PartInfo
         {
@@ -379,6 +428,63 @@ public class PartCatalog
                 new AttachNode { Id = "top", Position = new Vector3(0, 1.144f, 0), Orientation = new Vector3(0, 1, 0), Size = 2 },
                 new AttachNode { Id = "bottom", Position = new Vector3(0, -1.97f, 0), Orientation = new Vector3(0, -1, 0), Size = 2 }
             }
+        });
+
+        RegisterPart(new PartInfo
+        {
+            Name = "liquidEngine2-2_v2",
+            Title = "RE-L10 'Poodle' Liquid Fuel Engine",
+            Category = "Engines",
+            DryMass = 1.75,
+            Cost = 1300,
+            BulkheadProfiles = { "size2" },
+            Engine = new EngineInfo { MaxThrust = 250, MinThrust = 0, IspVac = 375, IspAsl = 90, Propellants = { "LiquidFuel", "Oxidizer" } },
+            AttachNodes =
+            {
+                new AttachNode { Id = "top", Position = new Vector3(0, 0, 0), Orientation = new Vector3(0, 1, 0), Size = 2 },
+                new AttachNode { Id = "bottom", Position = new Vector3(0, -1.5f, 0), Orientation = new Vector3(0, -1, 0), Size = 2 }
+            }
+        });
+
+        RegisterPart(new PartInfo
+        {
+            Name = "Size3AdvancedEngine",
+            Title = "Kerbodyne KR-2L+ 'Rhino' Liquid Fuel Engine",
+            Category = "Engines",
+            DryMass = 9.0,
+            Cost = 25000,
+            BulkheadProfiles = { "size3" },
+            Engine = new EngineInfo { MaxThrust = 2000, MinThrust = 0, IspVac = 340, IspAsl = 205, Propellants = { "LiquidFuel", "Oxidizer" } },
+            AttachNodes =
+            {
+                new AttachNode { Id = "top", Position = new Vector3(0, 1.488f, 0), Orientation = new Vector3(0, 1, 0), Size = 3 },
+                new AttachNode { Id = "bottom", Position = new Vector3(0, -2.537f, 0), Orientation = new Vector3(0, -1, 0), Size = 3 }
+            }
+        });
+
+        RegisterPart(new PartInfo
+        {
+            Name = "Size3EngineCluster",
+            Title = "S3 KS-25x4 'Mammoth' Liquid Fuel Engine",
+            Category = "Engines",
+            DryMass = 15.0,
+            Cost = 39000,
+            BulkheadProfiles = { "size3" },
+            Engine = new EngineInfo { MaxThrust = 4000, MinThrust = 0, IspVac = 315, IspAsl = 295, Propellants = { "LiquidFuel", "Oxidizer" } },
+            AttachNodes =
+            {
+                new AttachNode { Id = "top", Position = new Vector3(0, 1.527f, 0), Orientation = new Vector3(0, 1, 0), Size = 3 }
+            }
+        });
+
+        RegisterPart(new PartInfo
+        {
+            Name = "landingLeg1-2",
+            Title = "LT-2 Landing Strut",
+            Category = "Ground",
+            DryMass = 0.1,
+            Cost = 340,
+            BulkheadProfiles = { "srf" }
         });
 
         // Aerodynamics & Accessories
