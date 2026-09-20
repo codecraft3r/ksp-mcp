@@ -1,6 +1,11 @@
 // tylo_mission.ks - Autonomous Interplanetary Tylo Landing & Kerbin Return Mission
-// Target: Tylo (0.785g, Vacuum, ~5000 m/s landing/ascent budget)
-// Optimized for aggressive 100,000x rails timewarp (~5 minutes IRL mission duration)
+// 6-Stage Clean Hierarchy:
+// Stage 5: Mammoth Liftoff
+// Stage 4: Booster Decoupler + Rhino Cruiser Ignition
+// Stage 3: Transfer Decoupler + Poodle Descent Ignition
+// Stage 2: Ascent Decoupler + Terrier Ascent Ignition
+// Stage 1: Payload Decoupler
+// Stage 0: Recovery Parachute
 
 @LAZYGLOBAL OFF.
 CLEARSCREEN.
@@ -41,7 +46,6 @@ IF SHIP:BODY:NAME = "Kerbin" {
     PRINT "PHASE 3: Targeting Jool and calculating transfer burn...".
     SET TARGET TO "Jool".
 
-    // Full Hohmann injection dV from 80km LKO to Jool's semi-major axis is ~2750 m/s
     LOCAL tjiDV IS 2750.
     LOCAL tjiNode IS NODE(TIME:SECONDS + 150, 0, 0, tjiDV).
     ADD tjiNode.
@@ -61,7 +65,6 @@ IF SHIP:BODY:NAME <> "Jool" AND SHIP:BODY:NAME <> "Tylo" {
     SET KUNIVERSE:TIMEWARP:MODE TO "RAILS".
     UNTIL SHIP:BODY:NAME = "Jool" OR SHIP:BODY:NAME = "Tylo" {
         IF SHIP:ORBIT:HASNEXTPATCH AND ETA:TRANSITION < 60 {
-            // Near SOI boundary: drop to 1x to transition smoothly
             SET KUNIVERSE:TIMEWARP:WARP TO 0.
             WAIT UNTIL SHIP:ORBIT:HASNEXTPATCH = FALSE OR ETA:TRANSITION > 100.
             WAIT 5.
@@ -84,7 +87,7 @@ IF SHIP:BODY:NAME <> "Jool" AND SHIP:BODY:NAME <> "Tylo" {
 PRINT "PHASE 5: Targeting Tylo for orbital insertion...".
 SET TARGET TO "Tylo".
 
-// In Jool SOI, warp to periapsis or Tylo encounter
+// In Jool SOI, warp to Tylo encounter
 IF SHIP:BODY:NAME = "Jool" {
     IF SHIP:ORBIT:HASNEXTPATCH AND SHIP:ORBIT:NEXTPATCH:BODY:NAME = "Tylo" {
         PRINT "Tylo encounter confirmed in " + ROUND(ETA:TRANSITION) + "s. Warping...".
@@ -99,13 +102,11 @@ IF SHIP:BODY:NAME = "Jool" {
     }
 }
 
-// Once in Tylo SOI:
-IF SHIP:BODY:NAME = "Tylo" AND SHIP:PERIAPSIS > 35000 {
-    PRINT "In Tylo SOI. Jettisoning Rhino cruiser stage...".
-    STAGE. // Drops Rhino cruiser (Stage 5)
-    WAIT 0.8.
-    STAGE. // Ignites Poodle 250kN descent engine (Stage 4)
-    WAIT 1.
+// In Tylo SOI: Stage 3 drops Rhino and ignites Poodle
+IF SHIP:BODY:NAME = "Tylo" AND STAGE:NUMBER > 3 {
+    PRINT "In Tylo SOI. Staging to Poodle Descent Lander...".
+    STAGE. // Stage 3: Decouples Rhino cruiser AND ignites Poodle 250kN engine!
+    WAIT 2.
 
     PRINT "Planning Tylo capture burn at Periapsis...".
     LOCAL rPeri IS BODY:RADIUS + 30000.
@@ -129,7 +130,6 @@ IF SHIP:BODY:NAME = "Tylo" AND SHIP:STATUS = "ORBITING" {
     LOCK STEERING TO RETROGRADE.
     WAIT 5.
 
-    // Deorbit burn with Poodle 250kN engine
     PRINT "Executing Tylo deorbit burn...".
     LOCK THROTTLE TO 1.0.
     WAIT UNTIL SHIP:PERIAPSIS < 4000 OR (STAGE:NUMBER > 2 AND AVAILABLETHRUST < 1).
@@ -138,12 +138,10 @@ IF SHIP:BODY:NAME = "Tylo" AND SHIP:STATUS = "ORBITING" {
     PRINT "Deploying heavy LT-2 landing gear...".
     GEAR ON.
 
-    // High-precision suicide burn guidance loop
     PRINT "Engaging Terminal Suicide Burn Guidance...".
     LOCK STEERING TO -SHIP:VELOCITY:SURFACE.
 
     UNTIL SHIP:STATUS = "LANDED" OR SHIP:STATUS = "SPLASHED" {
-        // d_stop = v^2 / (2 * (a_max - g))
         LOCAL gTylo IS 7.85.
         LOCAL aMax IS (MAXTHRUST / SHIP:MASS).
         LOCAL netDecel IS MAX(1.0, aMax - gTylo).
@@ -178,11 +176,9 @@ IF SHIP:BODY:NAME = "Tylo" AND SHIP:STATUS = "ORBITING" {
 // --------------------------------------------------
 IF SHIP:BODY:NAME = "Tylo" AND (SHIP:STATUS = "LANDED" OR SHIP:STATUS = "SPLASHED") {
     PRINT "PHASE 7: Preparing for Tylo Ascent...".
-    PRINT "Decoupling descent stage...".
-    STAGE. // Drops Poodle tank & legs (Stage 3)
+    PRINT "Staging: Decoupling descent stage & igniting Terrier ascent engine...".
+    STAGE. // Stage 2: Drops Poodle stage/legs AND ignites Terrier engine!
     WAIT 1.
-    PRINT "Igniting ascent engine...".
-    STAGE. // Ignites Terrier engine (Stage 2)
 
     LOCK THROTTLE TO 1.0.
     LOCK STEERING TO HEADING(90, 45).
@@ -203,7 +199,6 @@ IF SHIP:BODY:NAME = "Tylo" {
     PRINT "PHASE 8: Planning Trans-Kerbin Injection return trajectory...".
     SET TARGET TO "Kerbin".
 
-    // Hohmann return burn from Tylo orbit back to Kerbin transfer
     LOCAL tkiDV IS 1150.
     LOCAL tkiNode IS NODE(TIME:SECONDS + 200, 0, 0, tkiDV).
     ADD tkiNode.
@@ -250,7 +245,7 @@ IF SHIP:ALTITUDE > 100000 {
 }
 
 PRINT "Decoupling ascent stage...".
-STAGE. // Drops Terrier engine and tank (Stage 1)
+STAGE. // Stage 1: Drops Terrier engine and tank, exposing heat shield!
 WAIT 2.
 
 PRINT "Orienting Heat Shield to blunt reentry vector...".
@@ -260,11 +255,10 @@ LOCK STEERING TO -SHIP:VELOCITY:SURFACE.
 PRINT "Entering upper atmosphere (70km) - Aerobraking initiated!".
 WAIT UNTIL SHIP:ALTITUDE < 70000.
 
-// Hold retrograde orientation through atmospheric deceleration
 WAIT UNTIL SHIP:ALTITUDE < 5000 AND SHIP:VELOCITY:SURFACE:MAG < 300.
 
 PRINT "Terminal aerodynamic deceleration complete. Deploying parachute!".
-STAGE. // Deploys parachuteSingle (Stage 0)
+STAGE. // Stage 0: Deploys parachuteSingle!
 CHUTES ON.
 UNLOCK STEERING.
 

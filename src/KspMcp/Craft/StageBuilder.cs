@@ -529,58 +529,77 @@ public class StageBuilder
             }
         }
 
-        // 9-Stage Descent Staging Setup (Descending index: Highest is ignited first)
-        // Stage 8: Mammoth Booster Engine
-        // Stage 7: TD-37 Booster Decoupler
-        // Stage 6: Rhino Interplanetary Cruiser Engine
-        // Stage 5: TD-25 Transfer Decoupler
-        // Stage 4: Poodle Tylo Descent Engine
-        // Stage 3: TD-12 Tylo Ascent Decoupler
-        // Stage 2: Terrier Tylo Ascent & Return Engine
+        // 6-Stage Clean KSP Staging Hierarchy:
+        // Stage 5: Mammoth Liftoff Booster Engine
+        // Stage 4: TD-37 Booster Decoupler + Rhino Interplanetary Cruiser Engine
+        // Stage 3: TD-25 Transfer Decoupler + Poodle Tylo Descent Engine
+        // Stage 2: TD-12 Tylo Ascent Decoupler + Terrier Tylo Ascent & Return Engine
         // Stage 1: TD-12 Reentry Capsule Decoupler
         // Stage 0: Reentry Parachute
-        int stage = 0;
+
+        // Stage 0: Parachute
         if (chute != null)
         {
-            chute.IgnitionStage = stage;
+            chute.IgnitionStage = 0;
+            chute.DecoupleStage = 0;
             chute.StageIndex = 0;
         }
+        root.DecoupleStage = 0;
+        hs.DecoupleStage = 0;
 
-        stage++;
-        decPayload.IgnitionStage = stage;
-        decPayload.DecoupleStage = stage;
+        // Stage 1: Reentry Capsule Decoupler
+        decPayload.IgnitionStage = 1;
+        decPayload.DecoupleStage = 1;
         decPayload.StageIndex = 0;
 
-        stage++;
-        ascentEngine.IgnitionStage = stage;
+        // Stage 2: Tylo Ascent Stage (Decouple descent stage + ignite Terrier)
+        decAscent.IgnitionStage = 2;
+        decAscent.DecoupleStage = 2;
+        decAscent.StageIndex = 1;
+
+        ascentEngine.IgnitionStage = 2;
+        ascentEngine.DecoupleStage = 1;
         ascentEngine.StageIndex = 0;
 
-        stage++;
-        decAscent.IgnitionStage = stage;
-        decAscent.DecoupleStage = stage;
-        decAscent.StageIndex = 0;
+        ascentTank.DecoupleStage = 1;
 
-        stage++;
-        descentEngine.IgnitionStage = stage;
+        // Stage 3: Tylo Descent Stage (Decouple Rhino cruiser + ignite Poodle)
+        decTransfer.IgnitionStage = 3;
+        decTransfer.DecoupleStage = 3;
+        decTransfer.StageIndex = 1;
+
+        descentEngine.IgnitionStage = 3;
+        descentEngine.DecoupleStage = 2;
         descentEngine.StageIndex = 0;
 
-        stage++;
-        decTransfer.IgnitionStage = stage;
-        decTransfer.DecoupleStage = stage;
-        decTransfer.StageIndex = 0;
+        descentTank.DecoupleStage = 2;
+        foreach (var leg in descentTank.Children)
+        {
+            leg.DecoupleStage = 2;
+        }
 
-        stage++;
-        cruiserEngine.IgnitionStage = stage;
+        // Stage 4: Interplanetary Cruiser Stage (Decouple Mammoth booster + ignite Rhino)
+        decBooster.IgnitionStage = 4;
+        decBooster.DecoupleStage = 4;
+        decBooster.StageIndex = 1;
+
+        cruiserEngine.IgnitionStage = 4;
+        cruiserEngine.DecoupleStage = 3;
         cruiserEngine.StageIndex = 0;
 
-        stage++;
-        decBooster.IgnitionStage = stage;
-        decBooster.DecoupleStage = stage;
-        decBooster.StageIndex = 0;
+        cruiserTank.DecoupleStage = 3;
 
-        stage++;
-        mammoth.IgnitionStage = stage;
+        // Stage 5: Mammoth Liftoff Booster Engine
+        mammoth.IgnitionStage = 5;
+        mammoth.DecoupleStage = 4;
         mammoth.StageIndex = 0;
+
+        boosterTank1.DecoupleStage = 4;
+        boosterTank2.DecoupleStage = 4;
+        foreach (var fin in boosterTank2.Children)
+        {
+            fin.DecoupleStage = 4;
+        }
 
         return vessel;
     }
